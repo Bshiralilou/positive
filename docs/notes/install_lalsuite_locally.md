@@ -40,12 +40,12 @@ Note that there are many things disabled here so that you don't waste time faffi
 
 ```bash
 ./00boot
-./configure --prefix=${CONDA_PREFIX} --enable-swig-python --disable-lalstochastic --disable-lalxml --disable-lalinference --disable-laldetchar --disable-lalapps --disable-lalframe --disable-lalmetaio --disable-lalburst --disable-lalinspiral CFLAGS="-g -D PHENOMXHMMBAND"
+./configure --prefix=${CONDA_PREFIX} --enable-swig-python --disable-lalstochastic --disable-lalxml --disable-lalinference --disable-laldetchar --disable-lalapps --disable-lalframe --disable-lalmetaio --disable-lalburst --disable-lalinspiral CFLAGS="-g -D PHENOMXHMDEBUG"
 make -j
 make install 
 ```
 
-Note that ```CFLAGS="-g -D PHENOMXHMMBAND"``` is a PhenomX specific flag, and need not be inlcuded if verbose debugging with PhenomX is not desired. 
+Note that ```CFLAGS="-g -D PHENOMXHMDEBUG"``` is a PhenomX specific flag, and need not be inlcuded if verbose debugging with PhenomX is not desired. 
 
 If this works, note the location of your lalsuite activation script (ie the script that lets your shell know where lalsuite lives). In my case its
 ```

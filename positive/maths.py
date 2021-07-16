@@ -509,7 +509,7 @@ def single_outsider( A ):
 
 
 # Return the min and max limits of an 1D array
-def lim(x,dilate=0):
+def lim(x,dilate=0,dilate_with_multiply=False):
     '''
     Return the min and max limits of an 1D array.
 
@@ -537,7 +537,13 @@ def lim(x,dilate=0):
     ans = array([min(z),max(z)]) + (0 if len(z)>1 else array([-1e-20,1e-20]))
 
     #
-    if dilate != 0: ans += diff(ans)*dilate*array([-1,1])
+    if dilate != 0: 
+        if dilate_with_multiply:
+            abs_dilate = abs(dilate)
+            dilate = max( abs_dilate, 1.0/abs_dilate )
+            ans *= array([1.0/dilate, dilate])
+        else:
+            ans += diff(ans)*dilate*array([-1,1])
 
     # Return min and max as list
     return ans

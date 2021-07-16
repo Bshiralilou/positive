@@ -1702,11 +1702,11 @@ class qnmobj:
     '''
     
     # Initialize the object
-    def __init__(this, M, a, l, m, n, p=None, s=-2, verbose=False, calc_slm=True, calc_rlm=True, use_nr_convention=True, refine=False, num_x=2**14, num_theta=2**9, harmonic_norm_convention=None, amplitude=None, __DEVELOPMENT__=False):
+    def __init__(this, M, a, l, m, n, p=None, s=-2, verbose=False, calc_slm=True, calc_rlm=True, use_nr_convention=True, refine=False, num_xi=2**14, num_theta=2**9, harmonic_norm_convention=None, amplitude=None, __DEVELOPMENT__=False):
 
         # Import needed things
         from positive.physics import leaver
-        from numpy import array
+        from numpy import array,sqrt
 
         # ----------------------------------------- #
         #              Validate inputs              #
@@ -1734,11 +1734,15 @@ class qnmobj:
         # Calculate the M=this.M QNM frequency
         this.CW = this.cw / this.M
         
+        # Inner and outer radii
+        this.rp = this.M + sqrt( this.M**2 - this.a**2 ) # Event horizon
+        this.rm = this.M - sqrt( this.M**2 - this.a**2 )
+        
         # Calculate the spheroidal harmonic for this QNM and store related information to the current object
         if calc_slm: this.__calc_slm__(__return__=False,num_theta=num_theta,norm_convention=harmonic_norm_convention)
         
         # Calculate the spheroidal harmonic for this QNM and store related information to the current object
-        if calc_rlm: this.__calc_rlm__(__return__=False,num_x=num_x,__DEVELOPMENT__=__DEVELOPMENT__)
+        if calc_rlm: this.__calc_rlm__(__return__=False,num_xi=num_xi,__DEVELOPMENT__=__DEVELOPMENT__)
 
     # Validate inputs
     def __validate_inputs__(this,M,a,l,m,n,p,s,verbose,use_nr_convention,refine,harmonic_norm_convention,amplitude):
@@ -1921,10 +1925,10 @@ class qnmobj:
         
 
     #
-    def __calc_rlm__(this,num_x=2**14,plot=False,__return__=True,__DEVELOPMENT__=False,__REGULARIZE__=False):
+    def __calc_rlm__(this,num_xi=2**14,plot=False,__return__=True,__DEVELOPMENT__=False,__REGULARIZE__=False):
         
         #
-        from numpy import linspace,pi,mean,median,sqrt,sin
+        from numpy import linspace,pi,mean,median,sqrt,sin,log
         
         # Adjust for conventions
         if this.__use_nr_convention__:
@@ -1939,18 +1943,24 @@ class qnmobj:
         # Define domain
         # x = (r-rp)/(r-rm)
         zero = 1e-4
-        this.__x__ = linspace(zero,1-zero*100,num_x) 
+        this.xi = linspace(zero,1-zero*100,num_xi) 
+        
+        # Store radius
+        this.r = (-this.rp + this.rm*this.xi)*1.0/(-1 + this.xi) 
+        
+        # Store tortoise coordinate
+        this.rstar = (-this.rp + this.rm*this.xi)*1.0/(-1 + this.xi) + ((this.a**2 + this.rm**2)*log((this.rm - this.rp)*1.0/(-1 + this.xi)) - (this.a**2 + this.rp**2)*log(((this.rm - this.rp)*this.xi)*1.0/(-1 + this.xi)))*1.0/(this.rm - this.rp)
         
         #
         if not __REGULARIZE__:
-            rlm_array = rlm_helper( this.a, internal_cw, internal_sc, this.l, this.m, this.__x__, this.s,geometric_M=1,london=False)
+            rlm_array = rlm_helper( this.a, internal_cw, internal_sc, this.l, this.m, this.xi, this.s,geometric_M=1,london=False)
             # Test whether a spheroidal harmonic array satisfies TK's radial equation
-            __rlm_test_quantity__,test_state = test_rlm(rlm_array,internal_sc,this.a,internal_cw,this.l,this.m,this.s,this.__x__,verbose=this.verbose,regularized=False)
+            __rlm_test_quantity__,test_state = test_rlm(rlm_array,internal_sc,this.a,internal_cw,this.l,this.m,this.s,this.xi,verbose=this.verbose,regularized=False)
         else:
             #
-            rlm_array = rlm_helper( this.a, internal_cw, internal_sc, this.l, this.m, this.__x__, this.s,geometric_M=1,london=False,pre_solution=1)
+            rlm_array = rlm_helper( this.a, internal_cw, internal_sc, this.l, this.m, this.xi, this.s,geometric_M=1,london=False,pre_solution=1)
             # Test whether a REGULARIZED spheroidal harmonic array satisfies TK's radial equation
-            __rlm_test_quantity__,test_state = test_rlm(rlm_array,internal_sc,this.a,internal_cw,this.l,this.m,this.s,this.__x__,verbose=this.verbose,regularized=True)
+            __rlm_test_quantity__,test_state = test_rlm(rlm_array,internal_sc,this.a,internal_cw,this.l,this.m,this.s,this.xi,verbose=this.verbose,regularized=True)
             
         # Adjust for conventions
         if this.__use_nr_convention__:
@@ -1959,7 +1969,7 @@ class qnmobj:
         
         #
         if __return__:
-            return this.__x__, rlm_array, __rlm_test_quantity__
+            return this.xi, rlm_array, __rlm_test_quantity__
         else:
             this.rlm = rlm_array
             this.__rlm_test_quantity__ = __rlm_test_quantity__
@@ -2093,7 +2103,7 @@ class qnmobj:
           
         #
         from matplotlib.pyplot import plot,xlabel,ylabel,figure,figaspect,subplots,yscale,gca,sca,xlim,ylim,grid,title,legend
-        from numpy import unwrap,angle,pi
+        from numpy import unwrap,angle,pi,exp
         
         #
         if ax is None:
@@ -2113,8 +2123,18 @@ class qnmobj:
         
         #
         sca( ax[0] )
-        plot( this.__x__, abs(this.rlm),lw=line_width,color=colors[0], label=label,ls=ls )
-        xlim(lim(this.__x__))
+        plot( this.xi, abs(this.rlm),lw=line_width,color=colors[0], label=label,ls=ls )
+        
+        # Compute factors to apply spin-corfficient (r**4 for large r or theta=pi/2) and the complex exponential of the tortoise coordinate
+        r4 = this.r**4
+        exp_rstar = exp( 1j * (this.cw.conj() if this.__use_nr_convention__ else this.cw) * this.rstar )
+        # The effect of this factor allows one to estimate Psi4's radial dependence from Rlm
+        psi4_factor = r4 * exp_rstar
+        
+        # Plot the psi4 scaling for reference
+        plot( this.xi, abs(this.rlm/psi4_factor),lw=line_width, label=r'$\sim \psi_4^{\ell m}$',ls='--', color='k' )
+        
+        xlim(lim(this.xi))
         xlabel(r'$\xi$')
         title(r'$|R_{\ell m n p}|$')
         yscale('log')
@@ -2123,14 +2143,14 @@ class qnmobj:
         #
         sca( ax[1] )
         pha = unwrap(angle(this.rlm))
-        plot( this.__x__, pha, color=colors[1],lw=line_width, label=label, ls=ls )
+        plot( this.xi, pha, color=colors[1],lw=line_width, label=label, ls=ls )
         xlabel(r'$\xi$')
         title(r'$\arg(R_{\ell m n p})$')
         if show_legend: legend(loc='best')
         
         #
         sca( ax[2] )
-        plot( this.__x__, abs(this.__rlm_test_quantity__), color=colors[2],lw=line_width, label=label, ls=ls )
+        plot( this.xi, abs(this.__rlm_test_quantity__), color=colors[2],lw=line_width, label=label, ls=ls )
         yscale('log')
         ylim(1e-10,1e10)
         #print(ylim())
@@ -5718,10 +5738,6 @@ def calc_spheroidal_moments( spherical_moments_dict, a, m, n, p, time, verbose=F
     validate_inputs_for_calc_spheroidal_moments( spherical_moments_dict, a, m, n, p, verbose, s )
     
     
-    # 
-    if method is None:
-        method = 'gradient'
-    
     # Handle cases:
     # ---
     
@@ -5738,13 +5754,22 @@ def calc_spheroidal_moments( spherical_moments_dict, a, m, n, p, time, verbose=F
         # ~- -~ ~- -~ ~- -~ ~- -~ #
         
         #
-        spheroidal_moments_dict,_,_,_ = calc_spheroidal_moments_helper( spherical_moments_dict, a, m, n, p, verbose=verbose, s=s, spectral=spectral,np=np )
+        spheroidal_moments_dict,L,Z,qnmo_dict = calc_spheroidal_moments_helper( spherical_moments_dict, a, m, n, p, verbose=verbose, s=s, spectral=spectral,np=np )
         
     elif either_p_or_n_is_iterable:
         
         # ~- -~ ~- -~ ~- -~ ~- -~ #
         # Case (2)
         # ~- -~ ~- -~ ~- -~ ~- -~ #
+
+        # 
+        if method is None:
+            if (len(p)==1) & (len(n)==1):
+                alert('Using projection to determine spheroidal moments')
+                method = 'projection'
+            else:
+                alert('Using gradient to determine spheroidal moments')
+                method = 'gradient'
         
         #
         if method in ('grad','gradient'):
@@ -5907,7 +5932,7 @@ def __calc_spheroidal_moments_via_gradient__(spherical_moments_dict, a, m, n, p,
     return (final_spheroidal_moments_dict,L,Z,qnmo_dict)
 
 #
-def __calc_spheroidal_moments_via_projection__(spherical_moments_dict, a, m, n, p, verbose=False, s=-2, spectral=True,harmonic_norm_convention=None):
+def __calc_spheroidal_moments_via_projection__(spherical_moments_dict, a, m, n, p, verbose=False, s=-2,np=None, spectral=True,harmonic_norm_convention=None):
     
     # Import usefuls 
     # ---
@@ -5916,7 +5941,9 @@ def __calc_spheroidal_moments_via_projection__(spherical_moments_dict, a, m, n, 
     from scipy.linalg import lstsq
     
     #
-    error('this method does not work; please use the "gradient" method')
+    #error('this method does not work; please use the "gradient" method')
+    if np is not None: error('this method is not setup to handle the np input')
+    if len(p)>1: error('more than one value of p requested but this method only works with one value of p; for multiple values of p use the gradient method')
     
     #
     # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * #
@@ -6056,7 +6083,7 @@ def __calc_spheroidal_moments_via_projection__(spherical_moments_dict, a, m, n, 
 
 
 # Calc spheroidal moments from spherical ones
-def calc_spheroidal_moments_helper( spherical_moments_dict, a, m, n, p, verbose=False, s=-2, spectral=True, spheroidal_moments_dict=None, T_dict=None, V_dict=None, qnmo_dict=None,harmonic_norm_convention=None ):
+def calc_spheroidal_moments_helper( spherical_moments_dict, a, m, n, p, verbose=False, s=-2, spectral=True, spheroidal_moments_dict=None, T_dict=None, V_dict=None, qnmo_dict=None,harmonic_norm_convention=None,np=None ):
     
     '''
     GENERAL
@@ -8035,7 +8062,7 @@ def tkradial_r( R, r, M, a, cw, m, s, separation_constant,flip_phase_convention=
     if convert_x:
         x = r
         r = (-rp + rm*x)*1.0/(-1 + x)
-        print(M,a,lim(r))
+        #print(M,a,lim(r))
 
     #
     D0R = R

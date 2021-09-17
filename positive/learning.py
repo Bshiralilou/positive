@@ -2721,7 +2721,7 @@ def positive_romline(   domain,           # Domain of Map
                         verbose = False ):
 
     # Use a linear interpolator, and a reverse greedy process
-    from numpy import interp, linspace, array, inf, arange, mean, zeros, std, argmax, argmin, amin, amax, ones
+    from numpy import interp, linspace, array, inf, arange, mean, zeros, std, argmax, argmin, amin, amax, ones, int64
     linterp = lambda x,y: lambda newx: interp(newx,x,y)
 
     # Domain and range shorthand
@@ -2746,16 +2746,17 @@ def positive_romline(   domain,           # Domain of Map
     if seed is None:
         seed = argmax(r)
     else:
-        if not isinstance(seed,int):
+        if not isinstance(seed,(int,int64)):
+            # print( '**>> ',seed, type(seed) )
             msg = 'seed input must be int'
             error( msg, 'positive_romline' )
 
     #
     done = False
-    space = [ seed ] if (not keep_ends) else sorted(list(set([0,len(r)-1,seed])))
-    domain_space = list(range(len(d)))
+    space = tuple([ seed ] if (not keep_ends) else sorted(list(set([0,len(r)-1,seed]))))
+    domain_space = tuple(range(len(d)))
     err = lambda x: mean( abs(x) ) # std(x) #
-    min_space = list(space)
+    min_space = tuple(space)
     while not done:
         #
         min_sigma = inf
@@ -2765,18 +2766,18 @@ def positive_romline(   domain,           # Domain of Map
             trial_space.append(k)
             trial_space.sort()
             # Apply linear interpolation ON the new domain TO the original domain
-            trial_domain = d[ trial_space ]
-            trial_range = r[ trial_space ]
+            trial_domain = d[ array(trial_space) ]
+            trial_range = r[ array(trial_space) ]
             #
             sigma = err( weights * (linterp( trial_domain, trial_range )( d ) - r) ) / ( err(r) if err(r)!=0 else 1e-8  )
             #
             if sigma < min_sigma:
                 min_k = k
                 min_sigma = sigma
-                min_space = array( trial_space )
+                min_space = array(trial_space)
 
         #
-        space = list(min_space)
+        space = tuple(min_space)
         #
         done = len(space) == N
 

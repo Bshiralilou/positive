@@ -2215,6 +2215,7 @@ def leaver( jf,                     # Dimensionless BH Spin
             full_output=False,
             __legacy__ = False,
             refine=False,
+            __CHECK__=True,
             verbose = False ):      # Toggle to be verbose
 
     #
@@ -2231,19 +2232,19 @@ def leaver( jf,                     # Dimensionless BH Spin
     if isinstance(jf,(tuple,list,ndarray)):
         #
         if full_output:
-            cw,sc,aw = array( [ helper(jf_, l, m, n, p , s, Mf, verbose=verbose,use_nr_convention=use_nr_convention,refine=refine,full_output=True) for jf_ in jf ] ).T
+            cw,sc,aw = array( [ helper(jf_, l, m, n, p , s, Mf, verbose=verbose,use_nr_convention=use_nr_convention,refine=refine,full_output=True,__CHECK__=__CHECK__) for jf_ in jf ] ).T
             return cw,sc
         else:
-            cw,sc = array( [ helper(jf_, l, m, n, p , s, Mf, verbose=verbose,use_nr_convention=use_nr_convention,refine=refine) for jf_ in jf ] ).T
+            cw,sc = array( [ helper(jf_, l, m, n, p , s, Mf, verbose=verbose,use_nr_convention=use_nr_convention,refine=refine,__CHECK__=__CHECK__) for jf_ in jf ] ).T
             return cw,sc
 
     else:
         #
-        return helper(jf, l, m, n, p , s, Mf, verbose=verbose,use_nr_convention=use_nr_convention,refine=refine,full_output=full_output)
+        return helper(jf, l, m, n, p , s, Mf, verbose=verbose,use_nr_convention=use_nr_convention,refine=refine,full_output=full_output,__CHECK__=__CHECK__)
 
 
 
-def __leaver_helper__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = False,use_nr_convention=False,full_output=False,refine=False):
+def __leaver_helper__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = False,use_nr_convention=False,full_output=False,refine=False,__CHECK__=True):
 
 
     # Import useful things
@@ -2279,9 +2280,9 @@ def __leaver_helper__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = F
     # # NOTE that the norm of the spin input will be used to interpolate the data as the numerical data was mapped according to jf>=0
     # # Given l,m,n,sign(jf) create a RELATIVE file string from which to load the data
     
-    # ENFORCE positive spin convention
-    if jf<0:
-        error('we will use the spin>0 convention. to select a retrograde mode, please set p=-1')
+    # # ENFORCE positive spin convention
+    # if jf<0:
+    #     error('we will use the spin>0 convention. to select a retrograde mode, please set p=-1')
     
     cmd = parent(os.path.realpath(__file__))
     #********************************************************************************#
@@ -2291,6 +2292,8 @@ def __leaver_helper__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = F
         else:
             m_label = 'm%i'%abs(m)
     else:
+        if jf<0:
+            m *= -1
         if m < 0:
             m_label = 'mm%i'%abs(m)
         else:
@@ -2359,38 +2362,38 @@ def __leaver_helper__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = F
     if use_nrutils_sign_convention:
         cw = cw.conj()
         cs = cs.conj()
-        
+    
     # Validate the QNM frequency and separation constant found
     lvrtol=1e-6
     # NOTE that leaver_workfunction evals Leaver's angular and radial constraint functions. Only the angular problem is invariant under conjugation of the QNM ferquency and separation constant. Thus we treat it's test differently below.
-    lvrwrk_vector = leaver_workfunction(jf,l,m,[cw.real,cw.imag,cs.real,cs.imag],s=s, london=1, use_nr_convention = use_nrutils_sign_convention)
-    lvrwrk = norm( lvrwrk_vector )
+    if __CHECK__:
+        lvrwrk_vector = leaver_workfunction(jf,l,m,[cw.real,cw.imag,cs.real,cs.imag],s=s, london=1, use_nr_convention = use_nrutils_sign_convention)
+        lvrwrk = norm( lvrwrk_vector )
       
-    #
-    refine = refine or (lvrwrk>lvrtol)
-    if refine:
         #
-        print_method = warning if (lvrwrk>lvrtol) else alert
-        print_method('Refining results becuase' + ( 'we have been aske to by the user.' if (lvrwrk<lvrtol) else 'the interpolated values are below the internally set accuracy standard.'  ), verbose=verbose  )
+        refine = refine or (lvrwrk>lvrtol)
+        if refine:
+            #
+            print_method = warning if (lvrwrk>lvrtol) else alert
+            print_method('Refining results becuase' + ( 'we have been aske to by the user.' if (lvrwrk<lvrtol) else 'the interpolated values are below the internally set accuracy standard.'  ), verbose=verbose  )
+            #
+            guess = array([cw.real,cw.imag,cs.real,cs.imag],dtype=float)
+            refined_cw,refined_cs,refined_lvrwrk,retry = lvrsolve(jf,l,m,guess,tol=1e-8,s=s, use_nr_convention = use_nrutils_sign_convention)
+            #
+            cw = refined_cw
+            cs = refined_cs
+            lvrwrk = refined_lvrwrk
+            
         #
-        guess = array([cw.real,cw.imag,cs.real,cs.imag],dtype=float)
-        refined_cw,refined_cs,refined_lvrwrk,retry = lvrsolve(jf,l,m,guess,tol=1e-8,s=s, use_nr_convention = use_nrutils_sign_convention)
-        #
-        cw = refined_cw
-        cs = refined_cs
-        lvrwrk = refined_lvrwrk
-        
-    
-    #
-    if lvrwrk>lvrtol:
-        alert( (l,m,n,p) )
-        alert(cw)
-        alert(cs)
-        alert( lvrwrk_vector )
-        msg = 'There is a bug. The values output are not consistent with Leaver\'s characteristic equations within %f.\n%s\n# The mode is (jf,l,m,n,p)=(%f,%i,%i,%i,%s)\n# The leaver_workfunction value is %s\n%s\n'%(lvrtol,'#'*40,jf,l,m,n,p,red(str(lvrwrk)),'#'*40)
-        error(msg,'slm')
-    else:
-        alert(blue('Check Passed:')+'Frequency and separation const. %s with (l,m)=(%i,%i). Zero is approx %s.'% (bold(blue('satisfy Leaver\'s equations')),l,m,magenta('%1.2e'%(lvrwrk))),verbose=verbose )
+        if lvrwrk>lvrtol:
+            alert( (l,m,n,p) )
+            alert(cw)
+            alert(cs)
+            alert( lvrwrk_vector )
+            msg = 'There is a bug. The values output are not consistent with Leaver\'s characteristic equations within %f.\n%s\n# The mode is (jf,l,m,n,p)=(%f,%i,%i,%i,%s)\n# The leaver_workfunction value is %s\n%s\n'%(lvrtol,'#'*40,jf,l,m,n,p,red(str(lvrwrk)),'#'*40)
+            error(msg,'slm')
+        else:
+            alert(blue('Check Passed:')+'Frequency and separation const. %s with (l,m)=(%i,%i). Zero is approx %s.'% (bold(blue('satisfy Leaver\'s equations')),l,m,magenta('%1.2e'%(lvrwrk))),verbose=verbose )
         
     # Here we scale the frequency by the BH mass according to the optional Mf input
     CW = cw/Mf
@@ -2405,7 +2408,7 @@ def __leaver_helper__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = F
 
 
 
-def __leaver_helper_legacy__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = False,use_nr_convention=None,full_output=None,refine=False):
+def __leaver_helper_legacy__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = False,use_nr_convention=None,full_output=None,refine=False,__CHECK__=None):
 
 
     # Import useful things
@@ -5259,7 +5262,7 @@ def ysprod_matrix(a,m,n,p,s,lrange,verbose=False,spectral=True,full_output=False
     numl = len(lrange)               # number of ell vals
         
     # Create list of QNM objects
-    qnmo = [ qnmobj( M,a,ll,m,n,p,verbose=verbose,use_nr_convention=True,calc_slm = not spectral, harmonic_norm_convention=norm_convention, num_theta=2**9 ) for ll in lrange ]
+    qnmo = [ qnmobj( M,a,ll,m,n,p,verbose=verbose,use_nr_convention=True,calc_slm = not spectral, harmonic_norm_convention=norm_convention, num_theta=2**9, calc_rlm=False ) for ll in lrange ]
     
     # Define dict of QNM objects for output 
     qnmo_dict.update( { (ll,m,n,p):qnmo[k] for k,ll in enumerate(lrange) } )

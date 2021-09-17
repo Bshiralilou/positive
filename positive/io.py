@@ -182,7 +182,7 @@ class smart_object:
         # Use grep to read each line in the file that contains an equals sign
         line_list = grep(eqls,file_location,**kwargs)
         for line in line_list:
-            this.learn_string( line,eqls, **kwargs )
+            this.learn_string( str(line),eqls, **kwargs )
         # Learn file location
         this.source_file_path.append(file_location)
         # Learn location of parent folder
@@ -193,6 +193,9 @@ class smart_object:
 
         #
         from numpy import array,ndarray,append
+        
+        #
+        string = str(string)
 
         # Create a string with the current process name
         thisfun = inspect.stack()[0][3]
@@ -211,7 +214,7 @@ class smart_object:
             for c in comment:
                 if not isinstance(c,str):
                     raise TypeError('Hi there!! Comment input must be string or list of stings. I found %s :D '%[c])
-                for k in range( string.count(c) ):
+                for k in list(range( string.count(c) )):
                     h = string.find(c)
                     # Keep only text that comes before the comment marker
                     string = string[:h]

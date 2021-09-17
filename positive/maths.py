@@ -171,6 +171,7 @@ class smooth:
         # Import usefuls
         from scipy.signal import savgol_filter as savgol
         from numpy import mod,ceil
+        import warnings 
 
         # Handle inputs
         if width is None: width = max( ceil( len(this.scalar_range)/10 ), polynomial_order+1 )
@@ -183,7 +184,10 @@ class smooth:
 
         #
         # print '>> ',width,polynomial_order,this.scalar_range.shape
-        ans = savgol( this.scalar_range, width, polynomial_order )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            ans = savgol( this.scalar_range, width, polynomial_order )
+            
         return ans
 
     # Smooth using moving average of available pionts
@@ -914,6 +918,7 @@ def maketaper(arr,state,window_type='hann',ramp=True):
             error('state incompatible with array dimensions: the array shape is %s, but the state is %s'%(yellow(str(arr.shape)),yellow(str(state))) )
 
     # Parse taper state
+    # alert(state)
     a = state[0]
     b = state[-1]
 
@@ -935,6 +940,7 @@ def maketaper(arr,state,window_type='hann',ramp=True):
             twice_ramp = expsin_window(2*true_width)
         else:
             #
+            # print('>> ',window_type, 2*true_width)
             twice_ramp = get_window( window_type, 2*true_width )
 
         if b>a:

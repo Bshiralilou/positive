@@ -67,7 +67,7 @@ def grep( flag, file_location, options=None, comment=None ):
     cmd = "grep " + '"' + flag + '" ' + file_location + options
     # Pass the command to the operating system
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
-    raw_output = process.communicate()[0]
+    raw_output = process.communicate()[0].decode('UTF-8')
     # Split the raw output into a list whose elements are the file's lines
     output = raw_output.splitlines()
     # Mask the lines that are comments
@@ -77,7 +77,7 @@ def grep( flag, file_location, options=None, comment=None ):
                 raise TypeError('Hi there!! Comment input must be string or list of stings. :D ')
             # Masking in Python:
             mask = [line[0]!=commet for line in output]
-            output = [output[k] for k in range(len(output)) if mask[k]]
+            output = [str(output[k]) for k in range(len(output)) if mask[k]]
 
     # Return the list of lines
     return output

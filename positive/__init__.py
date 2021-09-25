@@ -22,15 +22,21 @@ import copy
 # -------------------------------------------------------- #
 
 # list all py files within this directory
-from os.path import dirname, basename, isdir, realpath
-modules = list( basename(f)[:-3] for f in glob.glob(dirname(__file__)+"/*.py") if not ('__init__.py' in f) )
+from os import listdir
+from os.path import dirname, basename, isdir, realpath, exists, join
+# Files within this directory
+modules1 = list( basename(f)[:-3] for f in glob.glob(dirname(__file__)+"/*.py") if not ('__init__.py' in f) )
+# Sub packages within this directory
+modules2 = list( basename(f) for f in [ join(dirname(__file__),k) for k in listdir(dirname(__file__))] if (isdir(f) and exists(f+'/__init__.py')) )
+# Combine 
+modules = modules1 + modules2
 
 # Dynamically import all modules within this folder (namespace preserving)
 for module in modules:
     exec('from .%s import *' % module)
 
 # Cleanup
-del modules, module
+del modules, module, modules1, modules2
 
 # Setup plotting backend
 alert('Applying custom matplotlib settings.','positive')

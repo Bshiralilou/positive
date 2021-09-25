@@ -4,6 +4,7 @@ from . import *
 from positive.api import *
 from positive.plotting import *
 from positive.learning import *
+from positive.physics import *
 
 
 

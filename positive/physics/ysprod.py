@@ -4,6 +4,7 @@ from . import *
 from positive.api import *
 from positive.plotting import *
 from positive.learning import *
+from positive.physics import *
 
 
 
@@ -308,8 +309,9 @@ def ysprod_matrix_helper(a,m,n,p,s,lrange,verbose=False,spectral=True,full_outpu
         if sum(diff(lrange)) != len(lrange[:-1]):
             error('lrange must increment by exactly 1')
     if qnmo_dict is None: qnmo_dict = {}
-    if not isinstance(output_only,(None,str)):
-        error('The output_only key value must be None or string')
+    if output_only:
+        if not isinstance(output_only,str):
+            error('The output_only key value must be None or string')
     if output_only:
         full_output = True # NOTE that we will only select a SINGLE field of full_output to return 
         
@@ -511,14 +513,14 @@ def ysprod_matrix(a_values,m,n,p,s,lrange,verbose=False,spectral=True,full_outpu
         for a in a_values:
             # Process each single spin value 
             ans.append(
-                ysprod_matrix_helper(a,m,n,p,s,lrange,verbose=verbose,spectral=spectral,full_output=full_output, qnmo_dict=qnm_dict,norm_convention=norm_convention,__suppress_warnings__=__suppress_warnings__,output_only=output_only)
+                ysprod_matrix_helper(a,m,n,p,s,lrange,verbose=verbose,spectral=spectral,full_output=full_output, qnmo_dict=qnmo_dict,norm_convention=norm_convention,__suppress_warnings__=__suppress_warnings__,output_only=output_only)
             )
         
     elif isinstance(a_values,(int,int64,float,double)):
         
         # Process the single input spin value 
         a = a_values 
-        ans = ysprod_matrix_helper(a,m,n,p,s,lrange,verbose=verbose,spectral=spectral,full_output=full_output, qnmo_dict=qnm_dict,norm_convention=norm_convention,__suppress_warnings__=__suppress_warnings__,output_only=output_only)
+        ans = ysprod_matrix_helper(a,m,n,p,s,lrange,verbose=verbose,spectral=spectral,full_output=full_output, qnmo_dict=qnmo_dict,norm_convention=norm_convention,__suppress_warnings__=__suppress_warnings__,output_only=output_only)
         
     else:
         

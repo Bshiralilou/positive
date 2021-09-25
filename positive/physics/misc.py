@@ -4,6 +4,7 @@ from . import *
 from positive.api import *
 from positive.plotting import *
 from positive.learning import *
+from positive.physics.fits import *
 
 # High level function for calculating remant mass and spin
 def remnant(m1,m2,chi1,chi2,arxiv=None,verbose=False,L_vec=None):

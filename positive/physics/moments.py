@@ -4,7 +4,13 @@ from . import *
 from positive.api import *
 from positive.plotting import *
 from positive.learning import *
-from positive.physics import *
+# > > > > > > > > >  Import adjacent modules  > > > > > > > > > > #
+import positive
+modules = list( basename(f)[:-3] for f in glob.glob(dirname(__file__)+"/*.py") if (not ('__init__.py' in f)) and (not (__file__.split('.')[0] in f)) )
+print(modules)
+for module in modules:
+    exec('from .%s import *' % module)
+# > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > #
 
 
 
@@ -697,7 +703,7 @@ def calc_spheroidal_moments_helper( spherical_moments_dict, a, m, n, p, verbose=
     
     # Collect spheroidal information over all domain samples
     # ---
-    error('we wish to change this method so that it only handles a single domain index; related methods must be updated accordingly')
+    # error('we wish to change this method so that it only handles a single domain index; related methods must be updated accordingly')
     for k in index_domain:
         
         # Collect ordered spherical moment array at this domain sample

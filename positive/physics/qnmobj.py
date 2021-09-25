@@ -6,6 +6,13 @@ from positive.api import *
 from positive.plotting import *
 from positive.learning import *
 from positive.physics import *
+# > > > > > > > > >  Import adjacent modules  > > > > > > > > > > #
+import positive
+modules = list( basename(f)[:-3] for f in glob.glob(dirname(__file__)+"/*.py") if (not ('__init__.py' in f)) and (not (__file__.split('.')[0] in f)) )
+print(modules)
+for module in modules:
+    exec('from .%s import *' % module)
+# > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > #
 
 
 

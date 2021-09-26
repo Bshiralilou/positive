@@ -1,15 +1,18 @@
 
 #
 from __future__ import print_function
-from . import *
 from positive.api import *
 from positive.plotting import *
-from positive.learning import *
-from positive.physics import *
+from positive.learning import * 
+# from positive.physics import *
+from positive.physics.slm import slmy
+# from positive.physics.ysprod import prod
+# from positive.physics import *
 # > > > > > > > > >  Import adjacent modules  > > > > > > > > > > #
 import positive
 modules = list( basename(f)[:-3] for f in glob.glob(dirname(__file__)+"/*.py") if (not ('__init__.py' in f)) and (not (__file__.split('.')[0] in f)) )
 for module in modules:
+    # print('>> from .%s import *' % module)
     exec('from .%s import *' % module)
 # > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > #
 
@@ -18,7 +21,7 @@ for module in modules:
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 ''' Class for single QNM Objects '''
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
-class qnmobj:
+class qnmobj: 
     
     '''
     DESCRIPTION

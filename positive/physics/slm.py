@@ -1,9 +1,10 @@
 #
 from __future__ import print_function
-from . import *
 from positive.api import *
 from positive.plotting import *
 from positive.learning import *
+# from positive.physics.leaver import *
+# from positive.physics.ysprod import prod
 # > > > > > > > > >  Import adjacent modules  > > > > > > > > > > #
 import positive
 modules = list( basename(f)[:-3] for f in glob.glob(dirname(__file__)+"/*.py") if (not ('__init__.py' in f)) and (not (__file__.split('.')[0] in f)) )

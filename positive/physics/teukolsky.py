@@ -1,10 +1,9 @@
 #
 from __future__ import print_function
-from . import *
 from positive.api import *
 from positive.plotting import *
 from positive.learning import *
-from positive.physics import *
+# from positive.physics import *
 
 
 

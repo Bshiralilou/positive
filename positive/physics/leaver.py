@@ -1,16 +1,14 @@
 #
 from __future__ import print_function
-from . import *
-from positive.physics import *
 from positive.api import *
 from positive.plotting import *
 from positive.learning import *
-# > > > > > > > > >  Import adjacent modules  > > > > > > > > > > #
-import positive
-modules = list( basename(f)[:-3] for f in glob.glob(dirname(__file__)+"/*.py") if (not ('__init__.py' in f)) and (not (__file__.split('.')[0] in f)) )
-for module in modules:
-    exec('from .%s import *' % module)
-# > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > #
+# # > > > > > > > > >  Import adjacent modules  > > > > > > > > > > #
+# import positive
+# modules = list( basename(f)[:-3] for f in glob.glob(dirname(__file__)+"/*.py") if (not ('__init__.py' in f)) and (not (__file__.split('.')[0] in f)) )
+# for module in modules:
+#     exec('from .%s import *' % module)
+# # > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > #
 
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
@@ -253,6 +251,86 @@ def __leaver_helper__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = F
     else:
         return CW,CS
 
+
+#
+def load_leaver_splines(l,m,n=0,p=None,s=-2,use_nr_convention=False):
+    
+     # Import useful things
+    import os,positive
+    from scipy.interpolate import InterpolatedUnivariateSpline as spline
+    from numpy import loadtxt,exp,sign,abs,ndarray,array,complex128,complex256
+    from numpy.linalg import norm
+
+    # Validate jf input: case of int given, make float. NOTE that there is further validation below.
+    REVERT_TO_FLOAT = False
+    if isinstance(jf,(int,float)): 
+        jf = [float(jf)]
+        REVERT_TO_FLOAT = True
+    if not isinstance(jf,ndarray): jf = array(jf)
+    # Valudate s input
+    if abs(s) != 2: raise ValueError('This function currently handles on cases with |s|=2, but s=%i was given.'%s)
+    # Validate l input
+    # Validate m input
+    
+    #
+    if not use_nr_convention:
+        if not ((p is None) or (p is 0)):
+            error('When not using the NR convention, p must remain None. Instead p is %i.'%p)
+    else:
+        if p is None:
+            error('When using NR convention, p must be either 1 or -1.')
+
+    
+    #************#
+    cmd = positive.parent( positive.__path__[0] )  + 'positive/'
+    #************#
+    
+    if use_nr_convention:
+        if (p < 0) and (m!=0):
+            m_label = 'mm%i'%abs(m)
+        else:
+            m_label = 'm%i'%abs(m)
+    else:
+        if jf<0:
+            m *= -1
+        if m < 0:
+            m_label = 'mm%i'%abs(m)
+        else:
+            m_label = 'm%i'%abs(m)
+            
+    #************#
+    data_location = os.path.join( cmd,'data/kerr/l%i/n%il%i%s.dat' % (l,n,l,m_label) )
+    if use_nr_convention:
+        alert(magenta('Using NR convention ')+'for organizing solution space and setting the sign of the QNM freuency imaginary part (via nrutils convention).',verbose=verbose)
+    else:
+        alert(magenta('NOT using NR convention ')+'for organizing solution space and setting the sign of the QNM freuency imaginary part.',verbose=verbose)
+    alert('Loading: %s'%cyan(data_location),verbose=verbose)
+    #************#
+
+    # Validate data location
+    if not os.path.isfile(data_location): raise ValueError('The OS reports that "%s" is not a file or does not exist. Either the input QNM data is out of bounds (not currently stored in this repo), or there was an input error by the user.' % green(data_location) )
+
+    # Load the QNM data
+    data = loadtxt( data_location )
+
+    # Extract spin, frequencies and separation constants
+    JF = data[:,0]
+    CW = data[:,1] + 1j*data[:,2] 
+    CS = data[:,3] + 1j*data[:,4] 
+
+    # Validate the jf input
+    njf = abs(jf) # NOTE that the calculations were done using the jf>=0 convention
+    if min(njf)<min(JF) or max(njf)>max(JF):
+        warning('The input value of |jf|=%1.4f is outside the domain of numerical values [%1.4f,%1.4f]. Note that the tabulated values were computed on jf>0.' % (njf,min(JF),max(JF)) )
+
+    # Here we rescale to a unit mass. This is needed because leaver's convention was used to perform the initial calculations.
+    M_leaver = 0.5
+    CW *= M_leaver
+
+    # Interpolate/Extrapolate to estimate outputs
+    cw = spline( JF, CW.real )(njf) + 1j*spline( JF, CW.imag )( njf )
+    cs = spline( JF, CS.real )(njf) + 1j*spline( JF, CS.imag )( njf )
+    
 
 
 def __leaver_helper_legacy__( jf, l, m, n =  0, p = None, s = -2, Mf = 1.0, verbose = False,use_nr_convention=None,full_output=None,refine=False,__CHECK__=None):

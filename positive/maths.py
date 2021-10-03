@@ -2391,6 +2391,120 @@ def reflect_unwrap( vec ):
 
     #
     return ans
+    
+    
+#
+def reflect_unwrap_3D( X,Y,Z, threshold=0.5 ):
+    '''
+    Given X,Y,Z (arrays of same length), look for point reflections and correct by negation.
+    '''
+    
+    # Import usefuls 
+    from numpy import ndarray,shape
+
+    # Validate inputs 
+    for A in (X,Y,Z):
+        if isinstance(A,(list,tuple)):
+            A = array(A)
+    if not isinstance(X,ndarray):
+        error('first input must be numpy array')
+    if not isinstance(Y,ndarray):
+        error('second input must be numpy array')
+    if not isinstance(Z,ndarray):
+        error('third input must be numpy array')
+    if len(shape(X)) > 1:
+        error('first input must be numpy array of 1 dimension')
+    if len(shape(Y)) > 1:
+        error('second input must be numpy array of 1 dimension')
+    if len(shape(Z)) > 1:
+        error('third input must be numpy array of 1 dimension')
+    if not ( len(X) == len(Y) == len(Z) ):
+        error('input arrays must be same length')
+
+    #
+    domain = list( range(len(X)) )
+
+    #
+    X,Y,Z = [ A.copy() for A in (X,Y,Z) ]
+        
+    #
+    test = lambda A,l,r: abs(A[r]-A[l]) > threshold
+
+    # ---------------------- #
+    # Naive version: Fails because reflections may be stagerred
+    # ---------------------- #
+    
+    # # For all domain points 
+    # for right in range(1,len(domain)):
+        
+    #     #
+    #     left = right-1
+        
+    #     #
+    #     x_status = test( X, left, right )
+    #     y_status = test( Y, left, right )
+    #     z_status = test( Z, left, right )
+        
+    #     #
+    #     if x_status or y_status or z_status:
+            
+    #         #
+    #         X[right:] *= -1
+    #         Y[right:] *= -1
+    #         Z[right:] *= -1
+    
+    # ---------------------- #
+    # Less naive version
+    # ---------------------- #
+    
+
+    # For all domain points 
+    for right in range(1,len(domain)):
+        
+        #
+        left = right-1
+        
+        #
+        x_status = test( X, left, right )
+        y_status = test( Y, left, right )
+        z_status = test( Z, left, right )
+        
+        #
+        if x_status:# or y_status or z_status:
+            
+            #
+            X[right:] *= -1
+            Y[right:] *= -1
+            Z[right:] *= -1
+            
+    Y = reflect_unwrap(Y)
+    Z = reflect_unwrap(Z)
+
+    # For all domain points 
+    for right in range(1,len(domain)):
+        
+        #
+        left = right-1
+        
+        #
+        x_status = test( X, left, right )
+        y_status = test( Y, left, right )
+        z_status = test( Z, left, right )
+        
+        #
+        if y_status:# or y_status or z_status:
+            
+            #
+            X[right:] *= -1
+            Y[right:] *= -1
+            Z[right:] *= -1
+            
+    X = reflect_unwrap(X)
+    Y = reflect_unwrap(Y)
+    Z = reflect_unwrap(Z)
+    
+    #
+    return X,Y,Z
 
 # Look for reflections in vector and correct
 def reflect_unwrap2( VEC, tol=0.1, domain = None ):

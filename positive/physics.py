@@ -2572,6 +2572,103 @@ def wKerr_LR_Bardeen(j,M=1,branch=0):
 
 
 
+#
+def leaver_load_spline( l, m, n =  0, p = None, s = -2, verbose = False, use_nr_convention=False ):
+    
+    '''
+    Load and output splines
+    '''
+
+
+    # Import useful things
+    import os,positive
+    from scipy.interpolate import InterpolatedUnivariateSpline as spline
+    from numpy import loadtxt,exp,sign,abs,ndarray,array,complex128,complex256
+    from numpy.linalg import norm
+
+    # Valudate s input
+    if abs(s) != 2: raise ValueError('This function currently handles on cases with |s|=2, but s=%i was given.'%s)
+    # Validate l input
+    # Validate m input
+    
+    #
+    if not use_nr_convention:
+        if not ((p is None) or (p is 0)):
+            error('When not using the NR convention, p must remain None. Instead p is %i.'%p)
+    else:
+        if p is None:
+            error('When using NR convention, p must be either 1 or -1.')
+
+    # #%%%%%%%%%%%%%%%%%%%%%%%%%# NEGATIVE SPIN HANDLING #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+    cmd = positive.parent( positive.__path__[0] )  + 'positive/'
+    #********************************************************************************#
+    
+    
+    if use_nr_convention:
+        if (p < 0) and (m!=0):
+            m_label = 'mm%i'%abs(m)
+        else:
+            m_label = 'm%i'%abs(m)
+    else:
+        if jf<0:
+            m *= -1
+        if m < 0:
+            m_label = 'mm%i'%abs(m)
+        else:
+            m_label = 'm%i'%abs(m)
+            
+            
+    #********************************************************************************#
+    data_location = os.path.join( cmd,'data/kerr/l%i/n%il%i%s.dat' % (l,n,l,m_label) )
+    if use_nr_convention:
+        alert(magenta('Using NR convention ')+'for organizing solution space and setting the sign of the QNM freuency imaginary part (via nrutils convention).',verbose=verbose)
+    else:
+        alert(magenta('NOT using NR convention ')+'for organizing solution space and setting the sign of the QNM freuency imaginary part.',verbose=verbose)
+    alert('Loading: %s'%cyan(data_location),verbose=verbose)
+    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+
+    # Validate data location
+    if not os.path.isfile(data_location): raise ValueError('The OS reports that "%s" is not a file or does not exist. Either the input QNM data is out of bounds (not currently stored in this repo), or there was an input error by the user.' % green(data_location) )
+
+    # Load the QNM data
+    data = loadtxt( data_location )
+
+    # Extract spin, frequencies and separation constants
+    JF = data[:,0]
+    CW = data[:,1] + 1j*data[:,2] 
+    CS = data[:,3] + 1j*data[:,4] 
+    
+    # Here we rescale to a unit mass. This is needed because leaver's convention was used to perform the initial calculations.
+    M_leaver = 0.5
+    CW *= M_leaver
+
+    # Handle positive spin weight
+    if s>0:
+        CS = CS + 2*abs(s)
+        CW = CW.conj()
+        CS = CS.conj()
+    
+    # If needed, use symmetry relationships to get correct output.
+    if m<0:
+        # NOTE that this is needed when NOT using the NR convention
+        CW,CS = -CW.conj(),CS.conj()
+        
+    #
+    use_nrutils_sign_convention = use_nr_convention
+    if use_nrutils_sign_convention:
+        CW = CW.conj()
+        CS = CS.conj()
+
+    # Interpolate/Extrapolate to estimate outputs
+    cw_spline = lambda j: spline( JF, CW.real )(j) + 1j*spline( JF, CW.imag )(j)
+    cs_spline = lambda j: spline( JF, CS.real )(j) + 1j*spline( JF, CS.imag )(j)
+        
+    #
+    return cw_spline, cs_spline
+
+    
+    
+
 
 # Functions for calculating QNM freuqncies parameterized by BH spin
 def leaver_dev( a, l, m, n, s, M=1.0, verbose=False, solve=False ):
@@ -8051,7 +8148,7 @@ class qnmobj:
         if a<0:
             error('This object uses the convention that a>0. To select the retrograde QNM branch, set p=-1 when using the numerical relativity conventions, or m --> -m for the perturbation theory conventions. See qnmo.explain_conventions for more detail. ')
         if a>M:
-            error('Mass=M cannot be less than BH spin/Mass=a')
+            warning('Mass=M=%1.2f cannot be less than BH spin/Mass=a=%1.2f'%(M,a))
         if not isinstance(l,(int,int64)):
             error('ell must be integer')
         if not isinstance(m,(int,int64)):

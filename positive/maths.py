@@ -893,7 +893,13 @@ def findroots( y ):
 def find( bool_vec ):
 
     #
-    from numpy import where
+    from numpy import where,ndarray,bool_
+    
+    #
+    if not isinstance(bool_vec,(ndarray,tuple,list)):
+        error('first input must be ordered iterable: ndarray tuple list')
+    if not isinstance(bool_vec[0],(bool,bool_)):
+        error('All entries of input array must be bool, instead %s found on entry 0'%str(type(bool_vec[0])))
 
     #
     return where(bool_vec)[0]
@@ -2239,6 +2245,7 @@ def smoothest_part( data,
                     smooth_length=80,
                     smoothness_tolerance=1,
                     unsigned=False,
+                    method=None, threshold=0.1,
                     verbose=False ):
 
     '''
@@ -2252,23 +2259,52 @@ def smoothest_part( data,
                     verbose=False
 
 
-    ~ spxll 2018
+    ~ spxll 2018 
+        ... threshold added in 2021
     '''
 
     # Import usefuls
-    from numpy import isreal,argmax
+    from numpy import isreal,argmax,ndarray
+    
+    #
+    if not isinstance(data,(ndarray,list,tuple)):
+        error('first input must be iterable')
 
     # Validate input(s)
     if not isreal(data).all():
         warning('Input array not real. The real part will be taken.')
         data = data.real
 
-    # Calculate the smoothness of the input dataset
-    x = smooth( smoothness( smooth(data,smooth_length).answer ,r=smoothness_radius,stepsize=smoothness_stepsize,unsigned=unsigned), smooth_length ).answer
-    # x = smooth( smoothness( data ,r=smoothness_radius,stepsize=smoothness_stepsize), smooth_length ).answer
+    #
+    if method is None:
+        method = 'smoothness' # 'threshold'
 
-    # Create a boolean represenation of smoothness
-    k = abs(x-1) < smoothness_tolerance
+    #
+    method = method.lower()
+    if method in ('smoothness'):
+        
+        # Calculate the smoothness of the input dataset
+        x = smooth( smoothness( smooth(data,smooth_length).answer ,r=smoothness_radius,stepsize=smoothness_stepsize,unsigned=unsigned), smooth_length ).answer
+        # x = smooth( smoothness( data ,r=smoothness_radius,stepsize=smoothness_stepsize), smooth_length ).answer
+
+        # Create a boolean represenation of smoothness
+        k = abs(x-1) < smoothness_tolerance
+        
+    elif method in ('threshold'):
+        
+        #
+        A = data
+        max_A = max(abs(A))
+        
+        #
+        absolute_threshold = threshold * max_A
+        
+        # Create a boolean represenation of smoothness
+        k = abs(A - smooth(A,width=smooth_length).answer) < absolute_threshold
+        
+    else:
+        
+        error('method must be "threshold" (newer faster algo) or "smoothness"')
 
     # Clump the boolean represenation and then determine the largest clump
     if k.all():
@@ -2285,6 +2321,82 @@ def smoothest_part( data,
     # Return answer
     ans = mask
     return ans
+
+# Alternate algorithm for smoothest part
+def smoothest_part_by_threshold( A, threshold=0.25, smooth_width=40, plot=False ):
+    '''
+    Find the smoothest part of a 1d numpy array
+    '''
+    
+    #
+    from numpy import argmax,ndarray,hstack,diff,array
+    #
+    if plot:
+        from matplotlib.pyplot import figure,plot,axhline,sca,subplots,figaspect
+    
+    #
+    if not isinstance(A,(ndarray,list,tuple)):
+        error('first input must be iterable')
+    
+    #
+    max_A = max(abs(A))
+    
+    #
+    a = smooth(A,width=smooth_width).answer
+    
+    #
+    measure = abs(A - a)
+    
+    #
+    absolute_threshold = threshold * max(measure)
+    
+    # Create a boolean represenation of smoothness
+    # ---
+    # 1. Take the opportunity to ignore constant regions -- we expect the user understands that there are eaier ways to determine constant regions than this algo
+    ignore_flat_regions = hstack([[False],(diff(A)!=0)])
+    # 2. Apply the absolute threshold
+    k = (measure < absolute_threshold) & ignore_flat_regions
+    
+    #
+    domain = array(range(len(A)))
+    
+    # Diagnostic plotting
+    if plot:
+        fig,ax = subplots(2,1,figsize = 2*figaspect(0.618*2))
+        sca(ax[0])
+        plot( domain, A )
+        plot( domain, a )
+        sca(ax[1])
+        plot( measure )
+        axhline(absolute_threshold)
+        plot(domain, k,lw=3,color='orange')
+
+    # Clump the boolean represenation and then determine the largest clump
+    if k.all():
+        #
+        warning('the data appears to be smooth everywhere; please consider using this function\'s optional inputs to set your smoothing criteria')
+        mask = list(range(len(A)))
+    elif k.any():
+        # Get clumps
+        clumps,clump_masks = clump(k)
+        # Ignore *almost* constant clumps
+        clump_masks = [ c for c in clump_masks if abs(min(A[c])-max(A[c]))>absolute_threshold/2 ]
+        # Find the biggest remaining clump
+        k_best_clump = argmax( [ len(_) for _ in clump_masks  ] )
+        # Select the best clump for output
+        mask = clump_masks[ k_best_clump ]
+        # Diagnostic plotting
+        if plot:
+            figure()
+            for j,c in enumerate(clump_masks):
+                plot( domain[c], A[c], alpha=0.1 if (not j==k_best_clump) else 0.6, lw=5 )
+    else:
+        warning('the data appears to not be smooth anywhere; please consider using this function\'s optional inputs to set your smoothing criteria')
+        mask = list(range(len(A)))
+
+    # Return answer
+    return mask
+
 
 # Rotate a 3 vector using Euler angles
 def rotate3(vector,alpha,beta,gamma,invert=False):

@@ -1100,7 +1100,7 @@ class pn:
 
         # Initial gwylm object
         sceo = copy(sceo)
-        sceo.config = False
+        sceo.config = False # Important for turning off some initial gwylm processing
         y = gwylm(sceo,load=False,calcnews=False,calcstrain=False,load_dynamics=False)
         y.__lmlist__ = this.lmlist
         y.__input_lmlist__ = this.lmlist
@@ -1131,7 +1131,7 @@ class pn:
             phi = spline(t_,phi_)(t)
             hlm = amp * exp( -1j*phi )
             wfarr = array([ t, hlm.real, hlm.imag ]).T
-            y.hlm.append(  gwf( wfarr,l=l,m=m,kind='$rh_{%i%i}/M$'%(l,m) )  )
+            y.hlm.append(  gwf( wfarr,l=l,m=m,kind='$rh_{%i%i}/M$'%(l,m), mf=sceo.mf, xf = abs(sceo.xf) )  )
 
             # Store Psi4
             ylm_ = this.psi4[l,m]
@@ -1140,7 +1140,7 @@ class pn:
             phi = spline(t_,phi_)(t)
             ylm = amp * exp( -1j*phi )
             wfarr = array([ t, ylm.real, ylm.imag ]).T
-            y.ylm.append(  gwf( wfarr,l=l,m=m,kind='$rM\psi_{%i%i}$'%(l,m) )  )
+            y.ylm.append(  gwf( wfarr,l=l,m=m,kind='$rM\psi_{%i%i}$'%(l,m), mf=sceo.mf, xf = abs(sceo.xf) )  )
 
         #
         y.__curate__()

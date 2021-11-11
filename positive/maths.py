@@ -2778,3 +2778,260 @@ def sYlmAdj(s,l,lref,m,theta,phi,verbose=False,norm=True):
 
     #
     return ans
+
+
+
+# Calculate Widger D-Matrix Element
+def wdelement( ll,         # polar index (eigenvalue) of multipole to be rotated (set of m's for single ll )
+               mp,         # member of {all em for |em|<=l} -- potential projection spaceof m
+               mm,         # member of {all em for |em|<=l} -- the starting space of m
+               alpha,      # -.
+               beta,       #  |- Euler angles for rotation
+               gamma,      # -'
+               leaver=False,
+               smalld_splines=None ):    
+
+    #** wignerDelement
+    #*  calculates an element of the wignerD matrix
+    # Modified by llondon6 in 2012 and 2014
+    # Converted to python by spxll 2016
+    #
+    # This implementation apparently uses the formula given in:
+    # https://en.wikipedia.org/wiki/Wigner_D-matrix
+    #
+    # Specifically, this the formula located here: https://wikimedia.org/api/rest_v1/media/math/render/svg/53fd7befce1972763f7f53f5bcf4dd158c324b55
+
+    #
+    from numpy import sqrt,exp,cos,sin,ndarray,pi,array
+    try:
+        from scipy.misc import factorial
+    except:
+        from scipy.special import factorial
+        
+    #
+    if isinstance(alpha,float):
+        alpha = array([alpha])
+    if isinstance(beta,float):
+        beta = array([beta])
+    if isinstance(gamma,float):
+        gamma = array([gamma])
+
+    #
+    if ( (type(alpha) is ndarray) and (type(beta) is ndarray) and (type(gamma) is ndarray) ):
+        alpha,beta,gamma = alpha.astype(float), beta.astype(float), gamma.astype(float)
+    # else:
+    #     alpha,beta,gamma = float(alpha),float(beta),float(gamma)
+
+    #
+    if smalld_splines:
+        if leaver:
+            warning('We will set leaver to False so that the spine inputs can be used')
+        leaver = False 
+
+    #
+    if not leaver:
+        if smalld_splines:
+            element = wdelement_from_splines(ll,mp,mm,smalld_splines,alpha,beta,gamma)
+        else:
+            element = wdelement_trigonometric(ll,mp,mm,alpha,beta,gamma)
+    else:
+        l = ll
+        m = mm
+        s = -mp 
+        theta = beta 
+        phi = gamma
+        coefficient = ((-1)**(s+m)) * sqrt( 4*pi / (2*ll+1) ) * exp(-1j*s*alpha)
+        sylm = sYlm(s,l,m,theta,phi,leaver=True)
+        element = coefficient * sylm
+    
+    #
+    return element
+
+
+#
+def wdelement_from_splines(ll,mp,mm,smalld_splines,alpha,beta,gamma):
+    
+    '''
+    Eval Wigner D-matrix using output of wigner_smalld_splines as encapsulated by smalld_splines
+    '''
+    
+    #
+    from numpy import exp,mod,pi
+    
+    #
+    beta = mod(beta,2*pi)
+    
+    #
+    exponential_part = exp( 1j*(  mp*alpha  +  mm*gamma  ) )
+    
+    #
+    small_dmatrix_part = smalld_splines[ll,mp,mm](beta)
+    
+    #
+    element = exponential_part * small_dmatrix_part
+    
+    #
+    return element
+
+
+# Calculate Widger D-Matrix Element
+def wdelement_trigonometric( ll,         # polar index (eigenvalue) of multipole to be rotated (set of m's for single ll )
+               mp,         # member of {all em for |em|<=l} -- potential projection spaceof m
+               mm,         # member of {all em for |em|<=l} -- the starting space of m
+               alpha,      # -.
+               beta,       #  |- Euler angles for rotation
+               gamma ):    # -'
+
+    #** James Healy 6/18/2012
+    #** wignerDelement
+    #*  calculates an element of the wignerD matrix
+    # Modified by llondon6 in 2012 and 2014
+    # Converted to python by spxll 2016
+    #
+    # This implementation apparently uses the formula given in:
+    # https://en.wikipedia.org/wiki/Wigner_D-matrix
+    #
+    # Specifically, this the formula located here: https://wikimedia.org/api/rest_v1/media/math/render/svg/53fd7befce1972763f7f53f5bcf4dd158c324b55
+
+    #
+    from numpy import sqrt,exp,cos,sin,ndarray# Reference factorial from scipy
+    try:
+        from scipy.misc import factorial
+    except:
+        from scipy.special import factorial
+
+    #
+    if ( (type(alpha) is ndarray) and (type(beta) is ndarray) and (type(gamma) is ndarray) ):
+        alpha,beta,gamma = alpha.astype(float), beta.astype(float), gamma.astype(float)
+    # else:
+    #     alpha,beta,gamma = float(alpha),float(beta),float(gamma)
+
+    #
+    coefficient = sqrt( factorial(ll+mp)*factorial(ll-mp)*factorial(ll+mm)*factorial(ll-mm))*exp( 1j*(mp*alpha+mm*gamma) )
+
+    # NOTE that there may be convention differences where the overall sign of the complex exponential may be negated
+
+    #
+    total = 0
+
+    # find smin
+    if (mm-mp) >= 0 :
+        smin = mm - mp
+    else:
+        smin = 0
+
+    # find smax
+    if (ll+mm) > (ll-mp) :
+        smax = ll-mp
+    else:
+        smax = ll+mm
+
+    #
+    if smin <= smax:
+        for ss in range(smin,smax+1):
+            A = (-1)**(mp-mm+ss)
+            A *= cos(beta/2)**(2*ll+mm-mp-2*ss)  *  sin(beta/2)**(mp-mm+2*ss)
+            B = factorial(ll+mm-ss) * factorial(ss) * factorial(mp-mm+ss) * factorial(ll-mp-ss)
+            total += A/B
+
+    #
+    element = coefficient*total
+    return element
+
+# Calculate Widner D Matrix
+def wdmatrix( l,                # polar l
+              mrange,    # range of m values
+              alpha,
+              beta,
+              gamma,
+              smalld_splines=None,
+              out=None,
+              verbose = None ): # let the people know
+
+    #
+    from numpy import arange,array,zeros,complex256,double,ndarray
+
+    # Handle the mrange input
+    if mrange is None:
+        #
+        mrange = arange( -l, l+1 )
+    else:
+        # basic validation
+        for m in mrange:
+            if abs(m)>l:
+                msg = 'values in m range must not be greater than l'
+                error(msg,'wdmatrix')
+                
+    #
+    angles_are_iterable = False
+    if isinstance(alpha,(tuple,list,ndarray)):
+        Ns = len(alpha)
+        dim = len(mrange)
+        if not (out is None):
+            if not isinstance(out,ndarray):
+                error('out must be ndarray')
+            elif out.shape != (dim,dim,Ns):
+                    error('out is of incorrect shape, should be %s'%str((dim,dim,Ns)))
+        D = zeros( (dim,dim,Ns), dtype=complex256 ) if out is None else out
+        angles_are_iterable = True
+    elif isinstance(alpha,(float,double,complex,complex256)):
+        dim = len(mrange)
+        if not (out is None):
+            if not isinstance(out,ndarray):
+                error('out must be ndarray')
+            elif out.shape != (dim,dim):
+                    error('out is of incorrect shape, should be %s'%str((dim,dim)))
+        D = zeros( (dim,dim), dtype=complex256 ) if out is None else out
+    else:
+        error('unhandled angles type; must be iterable')
+        
+        
+    #
+    for j,mm in enumerate(mrange):
+        for k,mp in enumerate(mrange):
+            if angles_are_iterable:
+                D[j,k,:] = wdelement( l, mp, mm, alpha, beta, gamma, smalld_splines=smalld_splines )
+            else:
+                D[j,k] = wdelement( l, mp, mm, alpha, beta, gamma, smalld_splines=smalld_splines )
+
+    #
+    if out is None: return D
+
+
+# generate spline objects for small wigner d-matrix functions
+def wigner_smalld_splines(ll,N=2*1024):
+    
+    '''
+    Function to generate spline objects for small wigner d-matrix functions. 
+    This may be useful for speeding up operations that call use the wigner d-matrix functions many times. 
+    '''
+    
+    #
+    from positive import spline
+    from numpy import linspace,array,pi
+    
+    #
+    alpha = 0
+    beta  = 2*pi*linspace( -1,1,2*N )
+    gamma = 0
+    
+    #
+    mrange = list( range(-ll,ll+1) )
+    
+    #
+    d = {}
+    
+    #
+    for mp in mrange:
+        for mm in mrange:
+            
+            # Compute the small wigner d-matrix values across beta. 
+            # Recall that we have already set alpha and gamma to zero
+            d_ll_mp_mm = wdelement(ll,mp,mm,alpha,beta,gamma,leaver=False)
+            
+            # NOTE that d_l_m_mp are REAL valued
+            d[ll,mp,mm] = spline( beta, d_ll_mp_mm.real )
+            
+    #
+    return d
+            

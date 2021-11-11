@@ -286,6 +286,10 @@ def plot_3d_mesh_sphere(ax=None,nth=30,nph=30,r=1,color='k',lw=1,alpha=0.1,axes_
     if ax is None:
         fig = figure( figsize=4*figaspect(1) )
         ax = fig.add_subplot(111,projection='3d')
+            
+        # See: https://github.com/matplotlib/matplotlib/issues/17172#issuecomment-634964954
+        ax.set_box_aspect((1, 1, 1))
+            
         axis('square')
         ax.set_xlim([-r,r])
         ax.set_ylim([-r,r])

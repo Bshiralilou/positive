@@ -6218,10 +6218,16 @@ def slm_helper( aw, l, m, theta, phi, s, sc=None, tol=None, verbose=False,london
     # Define separation constant if not input
     if sc is None:
         #sc = slmcg_eigenvalue( dtyp(aw), s, l, m)
-        sc = sc_leaver( dtyp(aw), l, m, s, verbose=False, adjoint=False, london=london)[0]
+        if abs(aw):
+            sc = sc_leaver( dtyp(aw), l, m, s, verbose=False, adjoint=False, london=london)[0]
+        else:
+            sc = l*(l+1)-s*(s+1)
         
     # Sanity check separation constant
-    sc2 = sc_leaver( aw, l, m, s, verbose=False,adjoint=False, london=london, tol=tol)[0]
+    if abs(aw):
+        sc2 = sc_leaver( aw, l, m, s, verbose=False,adjoint=False, london=london, tol=tol)[0]
+    else:
+        sc2 = l*(l+1)-s*(s+1)
     if abs(sc2-sc)>1e-3:
         print('aw  = '+str(aw))
         print('sc_input  = '+str(sc))

@@ -925,7 +925,7 @@ def romspline(   domain,           # Domain of Map
     from scipy.interpolate import InterpolatedUnivariateSpline as spline
     from scipy.interpolate import interp1d
     from matplotlib.pyplot import plot,show,figure,xlabel,ylabel,legend,yscale
-    from kerr import pgreedy
+    from positive.learning import pgreedy
 
     # Domain and range shorthand
     d = domain
